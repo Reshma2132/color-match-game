@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Color Guessing Game - Fun Friday</title>
+  <style>
+    body { font-family: 'Segoe UI'; background: #f9f9f9; padding: 20px; text-align: center; }
+    video { border: 2px solid #333; border-radius: 10px; margin-top: 20px; }
+    #colorBox { width: 100px; height: 100px; margin: 20px auto; border: 2px solid #000; }
+    #startBtn, #stopBtn { padding: 10px 20px; font-size: 16px; margin: 10px; }
+    #log { margin-top: 20px; color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🎨 Show Me The Color - Team Game</h1>
+  <p>Hold up an object of the announced color. The system will detect who got it right first!</p>
+
+  <input type="text" id="teamName" placeholder="Enter Team Name"> <br>
+  <input type="text" id="targetColor" placeholder="Enter Color to Detect (e.g., red, blue)"> <br>
+
+  <button id="startBtn">Start Detection</button>
+  <button id="stopBtn">Stop Detection</button>
+
+  <div id="colorBox"></div>
+  <video id="video" width="300" height="200" autoplay></video>
+  <div id="log"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const colorBox = document.getElementById('colorBox');
+    const log = document.getElementById('log');
+    let stream, interval, winnerDeclared = false;
+
+    async function startCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+    }
+
+    function getAverageColor(video) {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = frame.data;
+      let r = 0, g = 0, b = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+      }
+      const pixelCount = data.length / 4;
+      return {
+        r: Math.round(r / pixelCount),
+        g: Math.round(g / pixelCount),
+        b: Math.round(b / pixelCount)
+      };
+    }
+
+    function rgbToName({ r, g, b }) {
+      if (r > 150 && g < 100 && b < 100) return "red";
+      if (g > 150 && r < 100 && b < 100) return "green";
+      if (b > 150 && r < 100 && g < 100) return "blue";
+      if (r > 200 && g > 200 && b < 100) return "yellow";
+      if (r > 200 && g > 200 && b > 200) return "white";
+      if (r < 50 && g < 50 && b < 50) return "black";
+      return "unknown";
+    }
+
+    document.getElementById('startBtn').onclick = () => {
+      if (!stream) startCamera();
+      winnerDeclared = false;
+      interval = setInterval(() => {
+        const avg = getAverageColor(video);
+        colorBox.style.backgroundColor = `rgb(${avg.r}, ${avg.g}, ${avg.b})`;
+        const detected = rgbToName(avg);
+        const target = document.getElementById('targetColor').value.trim().toLowerCase();
+        const team = document.getElementById('teamName').value.trim();
+        if (detected === target && !winnerDeclared && team) {
+          log.innerText = `🏆 ${team} showed the correct color (${target}) first!`;
+          winnerDeclared = true;
+        }
+      }, 500);
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+      clearInterval(interval);
+    };
+
+    startCamera();
+  </script>
+</body>
+</html>
